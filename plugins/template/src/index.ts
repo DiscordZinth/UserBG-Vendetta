@@ -1,29 +1,42 @@
-import { React, url } from "@vendetta/metro/common"
-import { getAssetIDByName } from "@vendetta/ui/assets"
-import { Forms, General } from "@vendetta/ui/components"
+import { logger } from "@vendetta"
+import { findByProps } from "@vendetta/metro"
+import { after } from "@vendetta/patcher"
+import { safeFetch } from "@vendetta/utils"
 import { showToast } from "@vendetta/ui/toasts"
 
-import { fetchData } from "./index"
+import Settings from "./Settings"
 
-const { ScrollView } = General
-const { FormSection, FormRow } = Forms
+interface userBGData {
+    _id: string
+    uid: string
+    img: string
+    orientation: string
+}
 
-export default () => (<ScrollView>
-    <FormSection>
-        <FormRow
-            label="Discord Server"
-            leading={<FormRow.Icon source={getAssetIDByName("Discord")} />}
-            trailing={FormRow.Arrow}
-            onPress={() => url.openDeeplink("https://discord.gg/TeRQEPb")}
-        />
-        <FormRow
-            label="Reload DB"
-            leading={<FormRow.Icon source={getAssetIDByName("ic_message_retry")} />}
-            onPress={async () => {
-                const fetch = await fetchData()
-                if (!fetch) return showToast("Failed to reload DB", getAssetIDByName("small"))
-                return showToast("Reloaded DB", getAssetIDByName("check"))
-            }}
-        />
-    </FormSection>
-</ScrollView>)
+const getUserBannerURL = findByProps("default", "getUserBannerURL")
+
+let data: userBGData[]
+let unpatch: () => void
+
+export const fetchData = async () => {
+    try {
+        data = await (await safeFetch("https://discordzinth.github.io/usrbg/dist/usrbg.json", { cache: "no-store" })).json()
+        return data
+    } catch (e) {
+        logger.error("Failed to fetch userBG data", e)
+    }
+}
+
+export const onLoad = async () => {
+    await fetchData()
+    if (!data) return showToast("Failed to load DB")
+
+    unpatch = after("getUserBannerURL", getUserBannerURL, ([user]) => {
+        const customBanner = data?.find((i: userBGData) => i.uid === user?.id)
+        if (user?.banner === undefined && customBanner) return customBanner.img
+    })
+}
+
+export const onUnload = () => unpatch?.()
+
+export const settings = Settings
