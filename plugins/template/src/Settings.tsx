@@ -17,7 +17,7 @@ export default () => (<ScrollView>
             onPress={() => url.openDeeplink("https://discord.gg/TeRQEPb")}
         />
         <FormRow
-            label="Reload DB"
+            label="Reload Database"
             leading={<FormRow.Icon source={getAssetIDByName("ic_message_retry")} />}
             onPress={async () => {
                 const fetch = await fetchData()
